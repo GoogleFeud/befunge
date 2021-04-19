@@ -1,15 +1,11 @@
-mod input; 
+mod interpreter;
 
 fn main() {
-    let arr = input::to_grid("
-v>>>>>v
-12345
-^?^
-> ? ?^
-v?v
-6789
->>>> v
-^    .<
-    ");
-    println!("{}", arr[1][1])
+    let mut eval = interpreter::Interpreter::new("19+9+1+");
+    loop {
+        if eval.isNotValidPos(eval.x, eval.y) { break; };
+        eval.tick();
+        eval.incPos();
+    }
+    println!("{}", eval.stack[0]);
 }
