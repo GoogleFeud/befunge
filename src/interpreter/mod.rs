@@ -13,6 +13,11 @@ pub enum EventType {
     STRING
 }
 
+pub enum StackOperation {
+    PUSH,
+    POP
+}
+
 pub struct Interpreter<'a> {
     pub code: Vec<Vec<char>>,
     pub stack: Vec<i64>,
@@ -22,7 +27,9 @@ pub struct Interpreter<'a> {
     pub str_mode: bool,
     pub ended: bool,
     pub on_output: &'a dyn Fn(i64, EventType),
-    pub on_input: &'a dyn Fn(&mut Self, EventType)
+    pub on_input: &'a dyn Fn(&mut Self, EventType),
+    pub on_stack_change: Option<&'a dyn Fn(i64, StackOperation)>,
+    pub on_p: Option<&'a dyn Fn(usize, usize, i64)>
 }
 
 impl<'a> Interpreter<'a> {
@@ -37,7 +44,9 @@ impl<'a> Interpreter<'a> {
             str_mode: false,
             ended: true,
             on_output: output,
-            on_input: input
+            on_input: input,
+            on_stack_change: None,
+            on_p: None
         }
     }
 
@@ -66,10 +75,25 @@ impl<'a> Interpreter<'a> {
         x >= self.code.len() || y >= self.code[x].len()
     }
 
+    #[inline]
+    fn push(&mut self, character: i64) {
+        self.stack.push(character);
+        if self.on_stack_change.is_some() { self.on_stack_change.unwrap()(character, StackOperation::PUSH) }
+    }
+
+    #[inline]
+    fn pop(&mut self) -> i64 {
+        let val = self.stack.pop();
+        if self.on_stack_change.is_some() { self.on_stack_change.unwrap()(0, StackOperation::POP); };
+        match val {
+            Some(x) => x,
+            None => 0
+        }
+    }
+
     pub fn tick(&mut self) {
         if self.ended { return; }
         if self.is_not_valid_pos(self.x, self.y) { 
-            println!("{}, {} {} {}", self.x, self.y, self.code.len(), self.code[self.x].len());
             self.ended = true;
             return;
         }
@@ -79,59 +103,57 @@ impl<'a> Interpreter<'a> {
                 self.str_mode = false;
                 return;
             }
-            self.stack.push(character as i64);
+            self.push(character as i64);
             return;
         }
         match character {
-            '0' ..= '9' => self.stack.push(character.to_digit(10).unwrap() as i64),
+            '0' ..= '9' => self.push(character.to_digit(10).unwrap() as i64),
             '+' => {
-                let a = self.stack.pop();
-                let b = self.stack.pop();
-                self.stack.push(a.unwrap_or(0) + b.unwrap_or(0));
+                let a = self.pop();
+                let b = self.pop();
+                self.push(a + b);
             },
             '-' => {
-                let a = self.stack.pop();
-                let b = self.stack.pop();
-                self.stack.push(b.unwrap_or(0) - a.unwrap_or(0));
+                let a = self.pop();
+                let b = self.pop();
+                self.push(b - a);
             },
             '*' => {
-                let a = self.stack.pop();
-                let b = self.stack.pop();
-                self.stack.push(a.unwrap_or(0) * b.unwrap_or(0));
+                let a = self.pop();
+                let b = self.pop();
+                self.push(a * b);
             },
             '/' => {
-                let a = self.stack.pop().unwrap_or(0);
+                let a = self.pop();
                 if a == 0 { panic!("Cannot divide by 0") }
-                let b = self.stack.pop();
-                self.stack.push(b.unwrap_or(0) / a);
+                let b = self.pop();
+                self.stack.push(b / a);
             },
             '%' => {
-                let a = self.stack.pop();
-                let b = self.stack.pop();
-                self.stack.push(b.unwrap_or(0) % a.unwrap_or(0));
+                let a = self.pop();
+                let b = self.pop();
+                self.stack.push(b % a);
             },
             '!' => {
-                let val = self.stack.pop();
-                self.stack.push((val.unwrap_or(0) == 0) as i64);
+                let val = self.pop();
+                self.stack.push((val == 0) as i64);
             },
             '`' => {
-                let a = self.stack.pop();
-                let b = self.stack.pop();
-                self.stack.push((b.unwrap_or(0) > a.unwrap_or(0)) as i64)
+                let a = self.pop();
+                let b = self.pop();
+                self.stack.push((b > a) as i64)
             },
             '_' => {
-                let val = self.stack.pop();
-                if val.unwrap_or(0) == 0 { self.direction = Direction::RIGHT }
+                if self.pop() == 0 { self.direction = Direction::RIGHT }
                 else { self.direction = Direction::LEFT }
             },
             '|' => {
-                let val = self.stack.pop();
-                if val.unwrap_or(0) == 0 { self.direction = Direction::DOWN }
+                if self.pop() == 0 { self.direction = Direction::DOWN }
                 else { self.direction = Direction::UP }
             },
-            ':' => self.stack.push(*self.stack.last().unwrap_or(&0)),
+            ':' => self.push(*self.stack.last().unwrap_or(&0)),
             '$' => {
-                self.stack.pop();
+                self.pop();
             },
             '?' => {
                 let num = rand::random::<f64>();
@@ -141,30 +163,31 @@ impl<'a> Interpreter<'a> {
                 else { self.direction = Direction::DOWN };
             },
             'p' => {
-                let x = self.stack.pop().unwrap_or(0) as usize;
-                let y = self.stack.pop().unwrap_or(0) as usize;
-                let val = self.stack.pop().unwrap_or(0);
-                if self.is_not_valid_pos(x, y) { self.stack.push(0); return; }
+                let x = self.pop() as usize;
+                let y = self.pop() as usize;
+                let val = self.pop();
+                if self.is_not_valid_pos(x, y) { self.push(0); return; }
                 self.code[x][y] = u8::try_from(val).unwrap_or(0) as char;
+                if self.on_p.is_some() { self.on_p.unwrap()(x, y, val) }
             },
             'g' => {
-                let x = self.stack.pop().unwrap_or(0) as usize;
-                let y = self.stack.pop().unwrap_or(0) as usize;
-                if self.is_not_valid_pos(x, y) { self.stack.push(0); return; }
-                self.stack.push(self.code[x][y] as i64);
+                let x = self.pop() as usize;
+                let y = self.pop() as usize;
+                if self.is_not_valid_pos(x, y) { self.push(0); return; }
+                self.push(self.code[x][y] as i64);
             },
             '\\' => {
-                let val1 = self.stack.pop().unwrap_or(0);
-                let val2 = self.stack.pop().unwrap_or(0);
-                self.stack.push(val1);
-                self.stack.push(val2);
+                let val1 = self.pop();
+                let val2 = self.pop();
+                self.push(val1);
+                self.push(val2);
             },
             '&' => (self.on_input)(self, EventType::INTEGER),
             '~' => (self.on_input)(self, EventType::STRING),
             '#' => self.inc_pos(),
             '"' => self.str_mode = true,
-            '.' => (self.on_output)(self.stack.pop().unwrap_or(0), EventType::INTEGER),
-            ',' => (self.on_output)(self.stack.pop().unwrap_or(0), EventType::STRING),
+            '.' => (self.on_output)(self.pop(), EventType::INTEGER),
+            ',' => (self.on_output)(self.pop(), EventType::STRING),
             '@' => self.ended = true,
             '>' => self.direction = Direction::RIGHT,
             'v' => self.direction = Direction::DOWN,

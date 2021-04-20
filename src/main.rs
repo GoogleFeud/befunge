@@ -27,7 +27,6 @@ fn main() {
     };
 
     let code = fs::read_to_string("test.bf").expect("Could not find file test.bf");
-
     let mut eval = interpreter::Interpreter::new(&code, &output, &input);
 
     eval.run();
