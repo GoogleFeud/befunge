@@ -6,7 +6,7 @@ mod interpreter;
 fn main() {
     let output = |val, val_type| {
         match val_type {
-            interpreter::EventType::INTEGER => print!("{}", val),
+            interpreter::EventType::INTEGER => print!("{} ", val),
             interpreter::EventType::STRING => print!("{}", u8::try_from(val).unwrap_or(0) as char)
         };
     };
@@ -21,7 +21,9 @@ fn main() {
             interpreter::EventType::STRING => {
                 let mut res = String::new(); 
                 io::stdin().read_line(&mut res).expect("Failed to read string");
-                interp.stack.push(res.chars().next().unwrap() as i64)
+                for character in res.chars() {
+                    interp.stack.push(character as i64);
+                }
             }
         }
     };
