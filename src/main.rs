@@ -1,11 +1,15 @@
+use std::convert::TryFrom;
 mod interpreter;
 
 fn main() {
-    let mut eval = interpreter::Interpreter::new("19+9+1+");
-    loop {
-        if eval.isNotValidPos(eval.x, eval.y) { break; };
-        eval.tick();
-        eval.incPos();
-    }
-    println!("{}", eval.stack[0]);
+    let output = |val, val_type| {
+        match val_type {
+            interpreter::EventType::INTEGER => print!("{}", val),
+            interpreter::EventType::STRING => print!("{}", u8::try_from(val).unwrap_or(0) as char)
+        };
+    };
+
+    let mut eval = interpreter::Interpreter::new("\"olleh\",,,,,@", &output);
+
+    eval.run();
 }
