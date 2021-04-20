@@ -22,12 +22,12 @@ pub struct Interpreter<'a> {
     pub str_mode: bool,
     pub ended: bool,
     pub on_output: &'a dyn Fn(i64, EventType),
-    pub on_input: &'a dyn Fn(EventType) -> i64
+    pub on_input: &'a dyn Fn(&mut Self, EventType)
 }
 
 impl<'a> Interpreter<'a> {
 
-    pub fn new(code: &str, output: &'a dyn Fn(i64, EventType), input: &'a dyn Fn(EventType) -> i64) -> Self {
+    pub fn new(code: &str, output: &'a dyn Fn(i64, EventType), input: &'a dyn Fn(&mut Self, EventType)) -> Self {
         Interpreter {
             x: 0,
             y: 0,
@@ -69,6 +69,7 @@ impl<'a> Interpreter<'a> {
     pub fn tick(&mut self) {
         if self.ended { return; }
         if self.is_not_valid_pos(self.x, self.y) { 
+            println!("{}, {} {} {}", self.x, self.y, self.code.len(), self.code[self.x].len());
             self.ended = true;
             return;
         }
@@ -86,7 +87,7 @@ impl<'a> Interpreter<'a> {
             '+' => {
                 let a = self.stack.pop();
                 let b = self.stack.pop();
-                self.stack.push(b.unwrap_or(0) + a.unwrap_or(0));
+                self.stack.push(a.unwrap_or(0) + b.unwrap_or(0));
             },
             '-' => {
                 let a = self.stack.pop();
@@ -96,12 +97,13 @@ impl<'a> Interpreter<'a> {
             '*' => {
                 let a = self.stack.pop();
                 let b = self.stack.pop();
-                self.stack.push(b.unwrap_or(0) * a.unwrap_or(0));
+                self.stack.push(a.unwrap_or(0) * b.unwrap_or(0));
             },
             '/' => {
-                let a = self.stack.pop();
+                let a = self.stack.pop().unwrap_or(0);
+                if a == 0 { panic!("Cannot divide by 0") }
                 let b = self.stack.pop();
-                self.stack.push(b.unwrap_or(0) / a.unwrap_or(0));
+                self.stack.push(b.unwrap_or(0) / a);
             },
             '%' => {
                 let a = self.stack.pop();
@@ -127,11 +129,7 @@ impl<'a> Interpreter<'a> {
                 if val.unwrap_or(0) == 0 { self.direction = Direction::DOWN }
                 else { self.direction = Direction::UP }
             },
-            ':' => {
-                let len = self.stack.len();
-                if len == 0 { return }
-                self.stack.push(self.stack[len - 1]);
-            },
+            ':' => self.stack.push(*self.stack.last().unwrap_or(&0)),
             '$' => {
                 self.stack.pop();
             },
@@ -139,20 +137,20 @@ impl<'a> Interpreter<'a> {
                 let num = rand::random::<f64>();
                 if num < 0.25 { self.direction = Direction::RIGHT }
                 else if num < 0.50 { self.direction = Direction::LEFT }
-                else if num > 0.75 { self.direction = Direction::UP }
+                else if num < 0.75 { self.direction = Direction::UP }
                 else { self.direction = Direction::DOWN };
             },
             'p' => {
                 let x = self.stack.pop().unwrap_or(0) as usize;
                 let y = self.stack.pop().unwrap_or(0) as usize;
                 let val = self.stack.pop().unwrap_or(0);
-                if self.is_not_valid_pos(x, y) { return }
+                if self.is_not_valid_pos(x, y) { self.stack.push(0); return; }
                 self.code[x][y] = u8::try_from(val).unwrap_or(0) as char;
             },
             'g' => {
                 let x = self.stack.pop().unwrap_or(0) as usize;
                 let y = self.stack.pop().unwrap_or(0) as usize;
-                if self.is_not_valid_pos(x, y) { return }
+                if self.is_not_valid_pos(x, y) { self.stack.push(0); return; }
                 self.stack.push(self.code[x][y] as i64);
             },
             '\\' => {
@@ -161,8 +159,8 @@ impl<'a> Interpreter<'a> {
                 self.stack.push(val1);
                 self.stack.push(val2);
             },
-            '&' => self.stack.push((self.on_input)(EventType::INTEGER)),
-            '~' => self.stack.push((self.on_input)(EventType::STRING)),
+            '&' => (self.on_input)(self, EventType::INTEGER),
+            '~' => (self.on_input)(self, EventType::STRING),
             '#' => self.inc_pos(),
             '"' => self.str_mode = true,
             '.' => (self.on_output)(self.stack.pop().unwrap_or(0), EventType::INTEGER),
@@ -173,7 +171,7 @@ impl<'a> Interpreter<'a> {
             '<' => self.direction = Direction::LEFT,
             '^' => self.direction = Direction::UP,
             ' ' => {},
-            _ => panic!("{:?}", character)
+            _ => panic!("Unsupported instruction: {:?}", character)
         };
     }
 

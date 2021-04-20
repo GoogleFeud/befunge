@@ -11,17 +11,17 @@ fn main() {
         };
     };
 
-    let input = |val_type| -> i64 {
+    let input = |interp: &mut interpreter::Interpreter, val_type| {
         match val_type {
             interpreter::EventType::INTEGER => {
                 let mut res = String::new(); 
                 io::stdin().read_line(&mut res).expect("Failed to read int");
-                res.trim().parse::<i64>().expect("Invalid integer pvovided")
+                interp.stack.push(res.trim().parse::<i64>().expect("Invalid integer pvovided"));
             }
             interpreter::EventType::STRING => {
                 let mut res = String::new(); 
                 io::stdin().read_line(&mut res).expect("Failed to read string");
-                res.chars().next().unwrap() as i64
+                interp.stack.push(res.chars().next().unwrap() as i64)
             }
         }
     };
