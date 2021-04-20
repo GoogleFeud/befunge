@@ -73,6 +73,7 @@ impl<'a> Interpreter<'a> {
                 return;
             }
             self.stack.push(character as i32);
+            return;
         }
         match character {
             '1' ..= '9' => self.stack.push(character.to_digit(10).unwrap() as i32),
@@ -86,7 +87,12 @@ impl<'a> Interpreter<'a> {
             '.' => (self.on_output)(self.stack.pop().unwrap_or(0), EventType::INTEGER),
             ',' => (self.on_output)(self.stack.pop().unwrap_or(0), EventType::STRING),
             '@' => self.ended = true,
-            _ => {}
+            '>' => self.direction = Direction::RIGHT,
+            'v' => self.direction = Direction::DOWN,
+            '<' => self.direction = Direction::LEFT,
+            '^' => self.direction = Direction::UP,
+            ' ' => {},
+            _ => panic!("Command not found: {}", character)
         };
     }
 

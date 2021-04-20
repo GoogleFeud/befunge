@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use std::fs;
 mod interpreter;
 
 fn main() {
@@ -9,7 +10,9 @@ fn main() {
         };
     };
 
-    let mut eval = interpreter::Interpreter::new("\"olleh\",,,,,@", &output);
+    let code = fs::read_to_string("test.bf").expect("Could not find file test.bf");
+
+    let mut eval = interpreter::Interpreter::new(&code, &output);
 
     eval.run();
 }
