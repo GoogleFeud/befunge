@@ -4,7 +4,7 @@ use std::io;
 use std::env;
 mod interpreter;
 
-struct Events;
+struct Events {}
 
 impl interpreter::Events for Events {
     fn on_input(&self, stack: &mut Vec<i64>, event_type: interpreter::EventType) {
@@ -34,10 +34,16 @@ impl interpreter::Events for Events {
 }
 
 fn main() {
-
     let filename = env::args().nth(1).expect("Please provide a file to run.");
+    let allowed_extensions = vec![".bf", ".b93", ".befunge", ".be"];
+
+    if !allowed_extensions.iter().any(|&extension| { filename.ends_with(extension) }) {
+        println!("File must have a befunge extension (.bf, .b93, .befunge or .be)");
+        return;
+    };
 
     let code = fs::read_to_string(filename).expect("Could not find file");
+
     let mut eval = interpreter::Interpreter::new(&code, Events {});
 
     eval.run();
