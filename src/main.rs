@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 use std::fs;
 use std::io;
+use std::env;
 mod interpreter;
 
 fn main() {
@@ -28,7 +29,9 @@ fn main() {
         }
     };
 
-    let code = fs::read_to_string("test.bf").expect("Could not find file test.bf");
+    let filename = env::args().nth(1).expect("Please provide a file to run.");
+
+    let code = fs::read_to_string(filename).expect("Could not find file");
     let mut eval = interpreter::Interpreter::new(&code, &output, &input);
 
     eval.run();

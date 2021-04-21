@@ -24,5 +24,5 @@ pub fn to_grid(code: &str) -> Vec<Vec<char>> {
         }
         arr.push(col);
     }
-    return arr;
+    arr
 }
