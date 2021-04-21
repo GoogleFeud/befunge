@@ -18,7 +18,14 @@ pub enum StackOperation {
     POP
 }
 
-pub struct Interpreter<'a> {
+pub trait Events {
+    fn on_output(&self, val: i64, event_type: EventType);
+    fn on_input(&self, stack: &mut Vec<i64>, event_type: EventType);
+    fn on_stack_change(&self, _val: i64, _op: StackOperation) {}
+    fn on_p(&self, _x: usize, _y: usize, _val: i64) {}
+}
+
+pub struct Interpreter<E: Events> {
     pub code: Vec<Vec<char>>,
     pub stack: Vec<i64>,
     pub direction: Direction,
@@ -26,15 +33,12 @@ pub struct Interpreter<'a> {
     pub y: usize,
     pub str_mode: bool,
     pub ended: bool,
-    pub on_output: &'a dyn Fn(i64, EventType),
-    pub on_input: &'a dyn Fn(&mut Self, EventType),
-    pub on_stack_change: Option<&'a dyn Fn(i64, StackOperation)>,
-    pub on_p: Option<&'a dyn Fn(usize, usize, i64)>
+    pub events: E
 }
 
-impl<'a> Interpreter<'a> {
+impl<E: Events> Interpreter<E> {
 
-    pub fn new(code: &str, output: &'a dyn Fn(i64, EventType), input: &'a dyn Fn(&mut Self, EventType)) -> Self {
+    pub fn new(code: &str, events: E) -> Self {
         Interpreter {
             x: 0,
             y: 0,
@@ -43,10 +47,7 @@ impl<'a> Interpreter<'a> {
             code: input::to_grid(code),
             str_mode: false,
             ended: true,
-            on_output: output,
-            on_input: input,
-            on_stack_change: None,
-            on_p: None
+            events
         }
     }
 
@@ -78,13 +79,13 @@ impl<'a> Interpreter<'a> {
     #[inline]
     fn push(&mut self, character: i64) {
         self.stack.push(character);
-        if self.on_stack_change.is_some() { self.on_stack_change.unwrap()(character, StackOperation::PUSH) }
+        self.events.on_stack_change(character, StackOperation::PUSH);
     }
 
     #[inline]
     fn pop(&mut self) -> i64 {
         let val = self.stack.pop();
-        if self.on_stack_change.is_some() { self.on_stack_change.unwrap()(0, StackOperation::POP); };
+        self.events.on_stack_change(0, StackOperation::POP);
         val.unwrap_or(0)
     }
 
@@ -165,7 +166,7 @@ impl<'a> Interpreter<'a> {
                 let val = self.pop();
                 if self.is_not_valid_pos(x, y) { self.push(0); return; }
                 self.code[x][y] = u8::try_from(val).unwrap_or(0) as char;
-                if self.on_p.is_some() { self.on_p.unwrap()(x, y, val) }
+                self.events.on_p(x, y, val);
             },
             'g' => {
                 let x = self.pop() as usize;
@@ -179,12 +180,18 @@ impl<'a> Interpreter<'a> {
                 self.push(val1);
                 self.push(val2);
             },
-            '&' => (self.on_input)(self, EventType::INTEGER),
-            '~' => (self.on_input)(self, EventType::STRING),
+            '&' => self.events.on_input(&mut self.stack, EventType::INTEGER),
+            '~' => self.events.on_input(&mut self.stack, EventType::STRING),
             '#' => self.inc_pos(),
             '"' => self.str_mode = true,
-            '.' => (self.on_output)(self.pop(), EventType::INTEGER),
-            ',' => (self.on_output)(self.pop(), EventType::STRING),
+            '.' => {
+                let popped = self.pop();
+                self.events.on_output(popped, EventType::INTEGER)
+            },
+            ',' => {
+                let popped = self.pop();
+                self.events.on_output(popped, EventType::STRING)
+            },
             '@' => self.ended = true,
             '>' => self.direction = Direction::RIGHT,
             'v' => self.direction = Direction::DOWN,
