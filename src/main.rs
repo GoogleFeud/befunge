@@ -31,6 +31,10 @@ impl interpreter::Events for Events {
         };
     }
 
+    fn on_error(&self, err: &str) {
+        println!("Error: {}", err);
+    }
+
 }
 
 fn main() {

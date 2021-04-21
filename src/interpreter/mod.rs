@@ -23,6 +23,7 @@ pub trait Events {
     fn on_input(&self, stack: &mut Vec<i64>, event_type: EventType);
     fn on_stack_change(&self, _val: i64, _op: StackOperation) {}
     fn on_p(&self, _x: usize, _y: usize, _val: i64) {}
+    fn on_error(&self, error: &str);
 }
 
 pub struct Interpreter<E: Events> {
@@ -89,6 +90,12 @@ impl<E: Events> Interpreter<E> {
         val.unwrap_or(0)
     }
 
+    #[inline]
+    fn error(&mut self, text: &str) {
+        self.events.on_error(text);
+        self.ended = true;
+    }
+
     pub fn tick(&mut self) {
         if self.ended { return; }
         if self.is_not_valid_pos(self.x, self.y) { 
@@ -123,7 +130,7 @@ impl<E: Events> Interpreter<E> {
             },
             '/' => {
                 let a = self.pop();
-                if a == 0 { panic!("Cannot divide by 0") }
+                if a == 0 { self.error("Cannot divide by 0"); return; }
                 let b = self.pop();
                 self.stack.push(b / a);
             },
@@ -198,7 +205,7 @@ impl<E: Events> Interpreter<E> {
             '<' => self.direction = Direction::LEFT,
             '^' => self.direction = Direction::UP,
             ' ' => {},
-            _ => panic!("Unsupported instruction: {:?}", character)
+            _ => self.error(&std::fmt::format(format_args!("Unsupported instruction: {}", character)))
         };
     }
 
