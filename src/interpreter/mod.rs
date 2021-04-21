@@ -85,10 +85,7 @@ impl<'a> Interpreter<'a> {
     fn pop(&mut self) -> i64 {
         let val = self.stack.pop();
         if self.on_stack_change.is_some() { self.on_stack_change.unwrap()(0, StackOperation::POP); };
-        match val {
-            Some(x) => x,
-            None => 0
-        }
+        val.unwrap_or(0)
     }
 
     pub fn tick(&mut self) {
