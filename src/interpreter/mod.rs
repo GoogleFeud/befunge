@@ -27,7 +27,7 @@ pub trait Events {
     fn on_error(&self, error: &str);
 }
 
-pub struct Interpreter<E: Events> {
+pub struct Interpreter<'a, E: Events> {
     pub code: Vec<Vec<char>>,
     pub stack: Vec<i64>,
     pub direction: Direction,
@@ -35,12 +35,12 @@ pub struct Interpreter<E: Events> {
     pub y: usize,
     pub str_mode: bool,
     pub ended: bool,
-    pub events: E
+    pub events: &'a E
 }
 
-impl<E: Events> Interpreter<E> {
+impl<'a, E: Events> Interpreter<'a, E> {
 
-    pub fn new(code: &str, events: E) -> Self {
+    pub fn new(code: &str, events: &'a E) -> Self {
         Interpreter {
             x: 0,
             y: 0,

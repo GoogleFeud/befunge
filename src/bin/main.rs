@@ -47,7 +47,7 @@ fn main() {
 
     let code = fs::read_to_string(filename).expect("Could not find file");
 
-    let mut eval = interpreter::Interpreter::new(&code, Events {});
+    let mut eval = interpreter::Interpreter::new(&code, &Events {});
 
     eval.run();
 
