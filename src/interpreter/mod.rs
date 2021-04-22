@@ -20,11 +20,11 @@ pub enum StackOperation {
 }
 
 pub trait Events {
-    fn on_output(&self, val: i64, event_type: EventType);
-    fn on_input(&self, stack: &mut Vec<i64>, event_type: EventType);
-    fn on_stack_change(&self, _val: i64, _op: StackOperation) {}
-    fn on_p(&self, _x: usize, _y: usize, _val: i64) {}
-    fn on_error(&self, error: &str);
+    fn on_output(&mut self, val: i64, event_type: EventType);
+    fn on_input(&mut self, stack: &mut Vec<i64>, event_type: EventType);
+    fn on_stack_change(&mut self, _val: i64, _op: StackOperation) {}
+    fn on_p(&mut self, _x: usize, _y: usize, _val: i64) {}
+    fn on_error(&mut self, error: &str);
 }
 
 pub struct Interpreter<'a, E: Events> {
@@ -35,12 +35,12 @@ pub struct Interpreter<'a, E: Events> {
     pub y: usize,
     pub str_mode: bool,
     pub ended: bool,
-    pub events: &'a E
+    pub events: &'a mut E
 }
 
 impl<'a, E: Events> Interpreter<'a, E> {
 
-    pub fn new(code: &str, events: &'a E) -> Self {
+    pub fn new(code: &str, events: &'a mut E) -> Self {
         Interpreter {
             x: 0,
             y: 0,

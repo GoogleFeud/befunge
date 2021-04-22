@@ -6,7 +6,7 @@ use befunge::interpreter;
 struct Events {}
 
 impl interpreter::Events for Events {
-    fn on_input(&self, stack: &mut Vec<i64>, event_type: interpreter::EventType) {
+    fn on_input(&mut self, stack: &mut Vec<i64>, event_type: interpreter::EventType) {
         match event_type {
             interpreter::EventType::INTEGER => {
                 let mut res = String::new(); 
@@ -23,14 +23,14 @@ impl interpreter::Events for Events {
         }
     }
 
-    fn on_output(&self, val: i64, event_type: interpreter::EventType) {
+    fn on_output(&mut self, val: i64, event_type: interpreter::EventType) {
         match event_type {
             interpreter::EventType::INTEGER => print!("{} ", val),
             interpreter::EventType::STRING => print!("{}", u8::try_from(val).unwrap_or(0) as char)
         };
     }
 
-    fn on_error(&self, err: &str) {
+    fn on_error(&mut self, err: &str) {
         println!("Error: {}", err);
     }
 
@@ -47,7 +47,8 @@ fn main() {
 
     let code = fs::read_to_string(filename).expect("Could not find file");
 
-    let mut eval = interpreter::Interpreter::new(&code, &Events {});
+    let mut events = Events {};
+    let mut eval = interpreter::Interpreter::new(&code, &mut events);
 
     eval.run();
 
