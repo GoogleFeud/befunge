@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use rand;
 mod input;
 
 pub enum Direction {
