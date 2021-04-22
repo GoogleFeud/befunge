@@ -53,6 +53,16 @@ impl<E: Events> Interpreter<E> {
         }
     }
 
+    pub fn reset(&mut self, code: &str) {
+        self.x = 0;
+        self.y = 0;
+        self.direction = Direction::RIGHT;
+        self.stack.clear();
+        self.code = input::to_grid(code);
+        self.str_mode = false;
+        self.ended = true;
+    }
+
     pub fn inc_pos(&mut self) {
         match self.direction {
             Direction::RIGHT => {
