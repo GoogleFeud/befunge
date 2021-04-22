@@ -3,6 +3,7 @@ use std::fs;
 use std::io;
 use std::env;
 use befunge::interpreter;
+
 struct Events {}
 
 impl interpreter::Events for Events {
@@ -47,8 +48,7 @@ fn main() {
 
     let code = fs::read_to_string(filename).expect("Could not find file");
 
-    let mut events = Events {};
-    let mut eval = interpreter::Interpreter::new(&code, &mut events);
+    let mut eval = interpreter::Interpreter::new(&code, Events {});
 
     eval.run();
 
