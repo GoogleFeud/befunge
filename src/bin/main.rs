@@ -2,8 +2,7 @@ use std::convert::TryFrom;
 use std::fs;
 use std::io;
 use std::env;
-mod interpreter;
-
+use befunge::interpreter;
 struct Events {}
 
 impl interpreter::Events for Events {
